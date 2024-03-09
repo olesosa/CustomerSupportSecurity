@@ -20,13 +20,10 @@ namespace CS.Security.Servises
             _userManager = userManager;
         }
 
-        public async Task<string> CallBackUrl(User user, string code)
+        private async Task<string> CallBackUrl(User user, string code)
         {
-            //var requestScheme = _contextAccessor.HttpContext.Request.Scheme; // -- gives https
-            //var requestHost = _contextAccessor.HttpContext.Request.Host; // -- gives localhost44313
-
-            var ngrok = ConstVariables.ngrok; // -- Constant variable of ngrok link, always re-generates
-            var callback_url = ngrok + "/api/User/ConfirmEmail" + $"?userId={user.Id}&code={code}";
+            var ngrok = ConstVariables.ngrok;
+            var callback_url = ngrok + "/api/User/EmailVerification" + $"?userId={user.Id}&code={code}";
 
             return await Task.FromResult(callback_url);
         }
@@ -115,13 +112,6 @@ namespace CS.Security.Servises
             {
                 return false;
             }
-        }
-
-        public async Task<bool> VerifyEmail(User user, string code)
-        {
-            var result = await _userManager.ConfirmEmailAsync(user, code);
-
-            return result.Succeeded ? true : false;
         }
     }
 }

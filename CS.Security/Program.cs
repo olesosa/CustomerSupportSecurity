@@ -8,6 +8,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using AutoMapper;
+using CS.Security.DTO;
+using CS.Security.Helpers.DtoValidators;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Serilog;
+using Mapper = CS.Security.Servises.Mapper;
 
 namespace CS.Security
 {
@@ -29,7 +36,12 @@ namespace CS.Security
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<ITokenGenerator, TokenGenerator>();
+            builder.Services.AddScoped<DataSeeder>();
+            builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
+            builder.Services.AddValidatorsFromAssemblyContaining<UserLogInValidator>();
+            builder.Services.AddValidatorsFromAssemblyContaining<UserSignUpValidator>();
+            
             builder.Services.AddIdentity<User, IdentityRole<Guid>>()
                 .AddEntityFrameworkStores<ApplicationContext>()
                 .AddDefaultTokenProviders();
@@ -44,6 +56,9 @@ namespace CS.Security
                 });
             });
 
+            builder.Host.UseSerilog((context, config) =>
+                config.ReadFrom.Configuration(context.Configuration));
+            
             var authConfig = new AuthSettings();
             builder.Configuration.GetSection("Auth").Bind(authConfig);
             builder.Services.AddSingleton(authConfig);
@@ -81,6 +96,12 @@ namespace CS.Security
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+            else
+            {
+                app.UseExceptionHandler("/Error");
+            }
+            
+            app.UseSerilogRequestLogging();
 
             app.UseRouting();
             app.UseCors("AllowMyOrigins");

@@ -6,9 +6,12 @@ namespace CS.Security.Interfaces
 {
     public interface IUserService
     {
-        Task<bool> Create(UserSignUpDto user);
-        Task<User?> GetById(Guid userId);
-        Task<User?> GetByEmail(string email);
+        Task<UserDto> Create(UserSignUpDto user);
+        Task<bool> CheckPassword(UserLogInDto user, string password);
         Task<TokenResponseModel?> VerifyToken(TokenRequestDto tokenRequest);
+        Task<TokenResponseModel?> GetTokens(string email);
+        Task<bool> IsUserExist(Guid userId);
+        Task<bool> IsUserExist(string email);
+        Task<bool> VerifyEmail(Guid userId, string code);
     }
 }

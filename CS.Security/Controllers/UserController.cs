@@ -1,12 +1,7 @@
 ﻿using CS.Security.DTO;
-using CS.Security.Html;
 using CS.Security.Interfaces;
-using CS.Security.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Org.BouncyCastle.Crypto.Fpe;
 
 namespace CS.Security.Controllers
 {
@@ -14,116 +9,81 @@ namespace CS.Security.Controllers
     [ApiController]
     public class UserController : ControllerBase
     {
-        readonly IUserService _userService;
-        readonly ITokenGenerator _tokenGenerator;
-        readonly IEmailService _emailService;
-        readonly UserManager<User> _userManager;
+        private readonly IUserService _userService;
 
-        public UserController(IUserService userService, IEmailService emailService, 
-            ITokenGenerator tokenGenerator, UserManager<User> userManager)
+        public UserController(IUserService userService)
         {
             _userService = userService;
-            _emailService = emailService;
-            _tokenGenerator = tokenGenerator;
-            _userManager = userManager;
         }
 
         [AllowAnonymous]
         [HttpPost("SignUp")]
         public async Task<IActionResult> SignUp([FromBody] UserSignUpDto userSignUp)
         {
-            try
+            if (!ModelState.IsValid)
             {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
-
-                if (await _userManager.FindByEmailAsync(userSignUp.Email) != null)
-                {
-                    return BadRequest("User already exist");
-                }
-
-                if (await _userService.Create(userSignUp))
-                {
-                    var createdUser = await _userService.GetByEmail(userSignUp.Email);
-
-                    if (await _emailService.SendEmail(createdUser))
-                    {
-                        return Ok("Email verify has been sent");
-                    }
-                    else
-                        return StatusCode(StatusCodes.Status500InternalServerError, "Somth went wrong with sending email");
-                }
-
+                return BadRequest(ModelState);
             }
-            catch { }
 
-            return StatusCode(StatusCodes.Status500InternalServerError, "Server error");
+            if (await _userService.IsUserExist(userSignUp.Email))
+            {
+                return BadRequest("User already exist");
+            }
+
+            var createdUser = await _userService.Create(userSignUp);
+
+            return Ok(createdUser);
         }
 
         [AllowAnonymous]
         [HttpPost("LogIn")]
         public async Task<IActionResult> LogIn([FromBody] UserLogInDto userLogIn)
         {
-            if(!ModelState.IsValid)
-            {
+            if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            }
 
-            try
+            if (!await _userService.IsUserExist(userLogIn.Email))
+                return NotFound("User does not exist");
+
+            if (!await _userService.CheckPassword(userLogIn, userLogIn.Password))
+                return BadRequest("Incorrect email or password");
+
+            var token = await _userService.GetTokens(userLogIn.Email);
+
+            if (token != null)
             {
-                var user = await _userManager.FindByEmailAsync(userLogIn.Email);
-
-                if (user == null)
-                {
-                    return NotFound("User does not exist");
-                }
-
-                var token = await _tokenGenerator.GenerateTokens(user);
-
-                if (token == null)
-                {
-                    return StatusCode(StatusCodes.Status500InternalServerError, "Token error");
-                }
-
                 return Ok(token);
             }
-            catch { }
 
             return StatusCode(StatusCodes.Status500InternalServerError, "Server error");
         }
 
         [AllowAnonymous]
-        [HttpGet]
-        public async Task<IActionResult> VerifyEmail([FromQuery] Guid userId, [FromQuery] string code)
+        [HttpGet("EmailVerification")]
+        public async Task<IActionResult> EmailVerification([FromQuery] Guid userId, [FromQuery] string code)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var user = await _userService.GetById(userId);
-
-            if (user == null)
+            if (!await _userService.IsUserExist(userId))
             {
                 return BadRequest("Invalid email parameter");
             }
 
-            code = code.Replace(' ', '+');
-
-            if (await _emailService.VerifyEmail(user, code)) 
+            if (await _userService.VerifyEmail(userId, code)) // TODO: add email htmls
             {
-                return Content(EmailHtmls.SuccessEmail, "text/html");
+                return Ok();
             }
             else
             {
-                return Content(EmailHtmls.FailEmail, "text/html");
+                return BadRequest();
             }
         }
 
         [AllowAnonymous]
-        [HttpPost]
+        [HttpPost("Token")]
         public async Task<IActionResult> RefreshToken([FromBody] TokenRequestDto tokenRequest)
         {
             if (!ModelState.IsValid)
