@@ -40,13 +40,19 @@ namespace CS.Security.Controllers
         public async Task<IActionResult> LogIn([FromBody] UserLogInDto userLogIn)
         {
             if (!ModelState.IsValid)
+            {
                 return BadRequest(ModelState);
+            }
 
             if (!await _userService.IsUserExist(userLogIn.Email))
+            {
                 return NotFound("User does not exist");
+            }
 
             if (!await _userService.CheckPassword(userLogIn, userLogIn.Password))
+            {
                 return BadRequest("Incorrect email or password");
+            }
 
             var token = await _userService.GetTokens(userLogIn.Email);
 

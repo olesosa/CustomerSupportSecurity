@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using AutoMapper;
 using CS.Security.DTO;
+using CS.Security.Helpers;
 using CS.Security.Helpers.DtoValidators;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -28,6 +29,11 @@ namespace CS.Security
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+            builder.Services.AddControllers(options =>
+            {
+                options.Filters.Add(typeof(CustomExceptionFilter));
+            });
+            
             builder.Services.AddDbContext<ApplicationContext>(options =>
             {
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DbString"));
