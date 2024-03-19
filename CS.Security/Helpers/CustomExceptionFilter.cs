@@ -1,13 +1,13 @@
 using System.Security.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.Formatters;
 
-namespace CS.Security.Servises;
+namespace CS.Security.Helpers;
 
 public class CustomExceptionFilter : IExceptionFilter
 {
-    private ILogger<CustomExceptionFilter> _logger;
-
+    private readonly ILogger<CustomExceptionFilter> _logger;
     public CustomExceptionFilter(ILogger<CustomExceptionFilter> logger)
     {
         _logger = logger;
@@ -52,9 +52,13 @@ public class CustomExceptionFilter : IExceptionFilter
     }
     
     private static ObjectResult BuildResponse(ProblemDetails problem) =>
-        new ObjectResult(problem)
-        {
-            StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError,
-            //ContentTypes = new MediaTypeCollection { "application/problem+json" }
-        };
+            new ObjectResult(problem)
+            {
+                StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError,
+                ContentTypes = new MediaTypeCollection
+                {
+                    "application/problem+json"
+                }
+            };
 }
+    

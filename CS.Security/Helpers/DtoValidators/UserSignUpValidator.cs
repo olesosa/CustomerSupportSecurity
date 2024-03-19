@@ -12,7 +12,14 @@ public class UserSignUpValidator : AbstractValidator<UserSignUpDto>
             .MaximumLength(50)
             .Length(4)
             .WithMessage("Not valid name");
-        
-        // TODO finish later
+
+        RuleFor(u => u.Email)
+            .NotNull()
+            .EmailAddress()
+            .WithMessage("Invalid email");
+
+        RuleFor(u => u.Password)
+            .NotNull()
+            .WithMessage("Invalid password");
     }
 }

@@ -39,7 +39,7 @@ namespace CS.Security.Servises.Authentication
                 Audience = _authSettings.Audience,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
                 Subject = identity,
-                Expires = DateTime.Now.AddHours(_authSettings.AccessTokenExpirationMinutes)
+                Expires = DateTime.Now.AddMinutes(_authSettings.AccessTokenExpirationMinutes)
             });
             return handler.WriteToken(securityToken);
         }
@@ -57,6 +57,9 @@ namespace CS.Security.Servises.Authentication
         public async Task<TokenResponseModel> GenerateTokens(User user)
         {
             user.RefreshToken = GenerateRefreshToken(user);
+            user.ExpirationTime = DateTimeOffset.UtcNow.AddSeconds(_authSettings.AccessTokenExpirationMinutes).ToUnixTimeSeconds();
+            // DateTimeOffset.FromUnixTimeSeconds(user.ExpirationTime);
+            
             var result = await _userManager.UpdateAsync(user);
 
             if (!result.Succeeded)
