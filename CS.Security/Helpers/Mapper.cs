@@ -16,5 +16,8 @@ public class Mapper : Profile
         
         CreateMap<UserSignUpDto, User>();
         CreateMap<User, UserSignUpDto>();
+        
+        CreateMap<AdminDto, User>();
+        CreateMap<User, AdminDto>();
     }
 }

@@ -1,13 +1,14 @@
 ﻿using AutoMapper;
 using CS.Security.DataAccess;
 using CS.Security.DTO;
+using CS.Security.Helpers;
 using CS.Security.Interfaces;
 using CS.Security.Models;
-using CS.Security.Servises.Authentication;
+using CS.Security.Services.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-namespace CS.Security.Servises
+namespace CS.Security.Services
 {
     public class UserService : IUserService
     {
@@ -37,10 +38,12 @@ namespace CS.Security.Servises
             {
                 var createdUser = await _userManager.FindByEmailAsync(userDto.Email);
 
-                var roleResult = await _userManager.AddToRoleAsync(createdUser, "Customer");
+                var roleResult = await _userManager.AddToRoleAsync(createdUser, "User");
 
                 if (!roleResult.Succeeded)
-                    throw new Exception("Can not give user role");
+                {
+                    throw new ApiException(500,"Error while giving role");
+                }
                 
                 var emailResult = await _emailService.SendEmail(createdUser);
 
@@ -48,30 +51,47 @@ namespace CS.Security.Servises
                 {
                     _context.Users.Remove(createdUser);
                     
-                    throw new Exception("Can not send an verification email");
+                    throw new ApiException(500,"Can not send an verification email");
                 }
                 
                 return _mapper.Map<UserDto>(createdUser);
             }
 
-            throw new Exception("Can not create user");
+            throw new ApiException(500,"Can not create user");
         }
 
         public async Task<bool> CheckPassword(UserLogInDto userDto, string password)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userDto.Email);
 
+            if (user == null)
+            {
+                throw new ApiException(400, "User does nor exist");
+            }
+
             return await _userManager.CheckPasswordAsync(user, password);
         }
 
         public async Task<TokenResponseModel?> VerifyToken(TokenRequestDto tokenRequest)
         {
-            return await _tokenGenerator.RefreshAccessToken(tokenRequest.Token, tokenRequest.RefreshToken);
+            var response = await _tokenGenerator.RefreshAccessToken(tokenRequest.Token, tokenRequest.RefreshToken);
+
+            if (response == null)
+            {
+                throw new ApiException(400, "Response generation error");
+            }
+
+            return response;
         }
 
-        public async Task<TokenResponseModel?> GetTokens(string email)
+        public async Task<TokenResponseModel> GetTokens(string email)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+            if (!await _userManager.IsEmailConfirmedAsync(user))
+            {
+                throw new ApiException(401, "Email is not confirmed");
+            }
             
             return await _tokenGenerator.GenerateTokens(user);
         }
@@ -94,9 +114,33 @@ namespace CS.Security.Servises
             
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
+            if (user == null)
+            {
+                throw new ApiException(404, "User does not exist");
+            }
+            
             var result = await _userManager.ConfirmEmailAsync(user, code);
 
             return result.Succeeded;
+        }
+
+        public async Task<bool> Delete(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                throw new ApiException(404, "User not found");
+            }
+            
+            var result = _userManager.DeleteAsync(user).IsCompletedSuccessfully;
+
+            if (!result)
+            {
+                throw new ApiException(500, "Can not delete user");
+            }
+            
+            return result;
         }
     }
 }

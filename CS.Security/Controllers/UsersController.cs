@@ -1,4 +1,6 @@
-﻿using CS.Security.DTO;
+﻿using System.Security.Claims;
+using CS.Security.DTO;
+using CS.Security.Helpers;
 using CS.Security.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,11 +9,11 @@ namespace CS.Security.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UserController : ControllerBase
+    public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
 
-        public UserController(IUserService userService)
+        public UsersController(IUserService userService)
         {
             _userService = userService;
         }
@@ -56,12 +58,7 @@ namespace CS.Security.Controllers
 
             var token = await _userService.GetTokens(userLogIn.Email);
 
-            if (token != null)
-            {
-                return Ok(token);
-            }
-
-            return StatusCode(StatusCodes.Status500InternalServerError, "Server error");
+            return Ok(token);
         }
 
         [AllowAnonymous]
@@ -82,10 +79,8 @@ namespace CS.Security.Controllers
             {
                 return Ok();
             }
-            else
-            {
-                return BadRequest();
-            }
+
+            throw new ApiException(400, "Bad request");
         }
 
         [AllowAnonymous]
@@ -97,12 +92,18 @@ namespace CS.Security.Controllers
 
             var token = await _userService.VerifyToken(tokenRequest);
 
-            if (token == null)
-            {
-                return BadRequest(token);
-            }
-
             return Ok(token);
+        }
+
+        [Authorize]
+        [HttpDelete]
+        public async Task<IActionResult> DeleteUser()
+        {
+            var userId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            await _userService.Delete(userId);
+
+            return Ok("User is deleted");
         }
     }
 }
