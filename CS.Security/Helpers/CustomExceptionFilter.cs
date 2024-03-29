@@ -17,6 +17,7 @@ public class CustomExceptionFilter : IExceptionFilter
     {
         var statusCode = context.Exception switch
         {
+            ApiException ex => ex.Status, 
             BadHttpRequestException _ => StatusCodes.Status400BadRequest,
             AuthenticationException _ => StatusCodes.Status401Unauthorized,
             _ => StatusCodes.Status500InternalServerError
@@ -24,6 +25,7 @@ public class CustomExceptionFilter : IExceptionFilter
         
         var detail = context.Exception switch
         {
+            ApiException ex => ex.Message, 
             BadHttpRequestException _ => context.Exception.Message,
             AuthenticationException _ => context.Exception.Message,
             _ => "Internal server error"
