@@ -1,4 +1,4 @@
-﻿namespace CS.Security.Servises.Authentication
+﻿namespace CS.Security.Services.Authentication
 {
     public class TokenResponseModel
     {

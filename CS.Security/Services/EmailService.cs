@@ -1,29 +1,30 @@
 ﻿using CS.Security.DataAccess;
 using CS.Security.Interfaces;
 using CS.Security.Models;
+using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.AspNetCore.Identity;
-using MimeKit.Text;
 using MimeKit;
-using MailKit.Net.Smtp;
+using MimeKit.Text;
 
-namespace CS.Security.Servises
+namespace CS.Security.Services
 {
     public class EmailService : IEmailService
     {
-        readonly ApplicationContext _context;
+        private const string ngrok = "https://5755-91-218-106-76.ngrok-free.app";
+        // ngrok http https://localhost:7007/ --host-header="localhost:7007" 
+        // TODO change ngrok link here
+
         readonly UserManager<User> _userManager;
 
-        public EmailService(ApplicationContext context, UserManager<User> userManager)
+        public EmailService(UserManager<User> userManager)
         {
-            _context = context;
             _userManager = userManager;
         }
 
         private async Task<string> CallBackUrl(User user, string code)
         {
-            var ngrok = ConstVariables.ngrok;
-            var callback_url = ngrok + "/api/User/EmailVerification" + $"?userId={user.Id}&code={code}";
+            var callback_url = ngrok + "/api/Users/EmailVerification" + $"?userId={user.Id}&code={code}";
 
             return await Task.FromResult(callback_url);
         }

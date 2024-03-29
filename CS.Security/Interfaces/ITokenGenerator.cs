@@ -1,5 +1,5 @@
 ﻿using CS.Security.Models;
-using CS.Security.Servises.Authentication;
+using CS.Security.Services.Authentication;
 
 namespace CS.Security.Interfaces
 {

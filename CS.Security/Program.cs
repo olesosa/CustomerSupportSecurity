@@ -2,7 +2,6 @@ using CS.Security.DataAccess;
 using CS.Security.Interfaces;
 using CS.Security.Models;
 using CS.Security.Servises;
-using CS.Security.Servises.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -12,8 +11,11 @@ using AutoMapper;
 using CS.Security.DTO;
 using CS.Security.Helpers;
 using CS.Security.Helpers.DtoValidators;
+using CS.Security.Services;
+using CS.Security.Services.Authentication;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.OpenApi.Models;
 using Serilog;
 using Mapper = CS.Security.Servises.Mapper;
 
@@ -27,13 +29,37 @@ namespace CS.Security
 
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-
-            builder.Services.AddControllers(options =>
+            builder.Services.AddSwaggerGen(opt =>
             {
-                options.Filters.Add(typeof(CustomExceptionFilter));
+                opt.SwaggerDoc("v1", new OpenApiInfo { Title = "MyAPI", Version = "v1" });
+                opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    In = ParameterLocation.Header,
+                    Description = "Please enter token",
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    BearerFormat = "JWT",
+                    Scheme = "bearer"
+                });
+
+                opt.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type=ReferenceType.SecurityScheme,
+                                Id="Bearer"
+                            }
+                        },
+                        new string[]{}
+                    }
+                });
             });
-            
+
+            builder.Services.AddControllers(options => { options.Filters.Add(typeof(CustomExceptionFilter)); });
+
             builder.Services.AddDbContext<ApplicationContext>(options =>
             {
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DbString"));
@@ -42,12 +68,14 @@ namespace CS.Security
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<ITokenGenerator, TokenGenerator>();
+            builder.Services.AddScoped<IAdminService, AdminService>();
             builder.Services.AddScoped<DataSeeder>();
             builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
+            builder.Services.AddValidatorsFromAssemblyContaining<AdminCreateDtoValidator>();
             builder.Services.AddValidatorsFromAssemblyContaining<UserLogInValidator>();
             builder.Services.AddValidatorsFromAssemblyContaining<UserSignUpValidator>();
-            
+
             builder.Services.AddIdentity<User, IdentityRole<Guid>>()
                 .AddEntityFrameworkStores<ApplicationContext>()
                 .AddDefaultTokenProviders();
@@ -57,43 +85,44 @@ namespace CS.Security
                 options.AddPolicy(name: "AllowMyOrigins", policy =>
                 {
                     policy.AllowAnyOrigin()
-                          .AllowAnyHeader()
-                          .AllowAnyMethod();
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
                 });
             });
 
             builder.Host.UseSerilog((context, config) =>
                 config.ReadFrom.Configuration(context.Configuration));
-            
+
             var authConfig = new AuthSettings();
             builder.Configuration.GetSection("Auth").Bind(authConfig);
             builder.Services.AddSingleton(authConfig);
 
             builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-                .AddJwtBearer(options =>
-            {
-                options.RequireHttpsMetadata = false;
-                options.SaveToken = true;
-                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidateIssuer = true,
-                    ValidIssuer = builder.Configuration["Auth:Issuer"],
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddJwtBearer(options =>
+                {
+                    options.RequireHttpsMetadata = false;
+                    options.SaveToken = true;
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = builder.Configuration["Auth:Issuer"],
 
-                    ValidateAudience = true,
-                    ValidAudience = builder.Configuration["Auth:Audience"],
+                        ValidateAudience = true,
+                        ValidAudience = builder.Configuration["Auth:Audience"],
 
-                    ValidateLifetime = true,
+                        ValidateLifetime = true,
 
-                    ValidateIssuerSigningKey = true,
-                    ClockSkew = TimeSpan.Zero,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(builder.Configuration["Auth:SecretKey"])),
-                };
-            });
+                        ValidateIssuerSigningKey = true,
+                        ClockSkew = TimeSpan.Zero,
+                        IssuerSigningKey =
+                            new SymmetricSecurityKey(Encoding.ASCII.GetBytes(builder.Configuration["Auth:SecretKey"])),
+                    };
+                });
 
             var app = builder.Build();
 
@@ -106,7 +135,7 @@ namespace CS.Security
             {
                 app.UseExceptionHandler("/Error");
             }
-            
+
             app.UseSerilogRequestLogging();
 
             app.UseRouting();
@@ -118,20 +147,18 @@ namespace CS.Security
 
             app.MapControllers();
 
-            // seedin roles
-            //using (var scope = app.Services.CreateScope())
-            //{
-            //    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-
-            //    var roles = new[] { "Admin", "Customer" };
-            //    foreach (var role in roles)
-            //    {
-            //        if (!await roleManager.RoleExistsAsync(role))
-            //            await roleManager.CreateAsync(new IdentityRole<Guid>(role));
-            //    }
-            //}
+            await SeedRequiredData(app);
 
             app.Run();
+        }
+
+        private static async Task SeedRequiredData(WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+            var seedService = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+            if (seedService == null) return;
+            await seedService.SeedRoles();
+            await seedService.SeedAllData();
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using CS.Security.DTO;
 using CS.Security.Models;
-using CS.Security.Servises.Authentication;
+using CS.Security.Services.Authentication;
 
 namespace CS.Security.Interfaces
 {
@@ -9,9 +9,10 @@ namespace CS.Security.Interfaces
         Task<UserDto> Create(UserSignUpDto user);
         Task<bool> CheckPassword(UserLogInDto user, string password);
         Task<TokenResponseModel?> VerifyToken(TokenRequestDto tokenRequest);
-        Task<TokenResponseModel?> GetTokens(string email);
+        Task<TokenResponseModel> GetTokens(string email);
         Task<bool> IsUserExist(Guid userId);
         Task<bool> IsUserExist(string email);
         Task<bool> VerifyEmail(Guid userId, string code);
+        Task<bool> Delete(string userId);
     }
 }

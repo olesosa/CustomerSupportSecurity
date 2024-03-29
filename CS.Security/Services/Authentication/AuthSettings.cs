@@ -1,7 +1,7 @@
-﻿using Microsoft.IdentityModel.Tokens;
-using System.Text;
+﻿using System.Text;
+using Microsoft.IdentityModel.Tokens;
 
-namespace CS.Security.Servises.Authentication
+namespace CS.Security.Services.Authentication
 {
     public class AuthSettings
     {
@@ -11,6 +11,6 @@ namespace CS.Security.Servises.Authentication
         public string Issuer { get; set; }
         public string Audience { get; set; }
         public SecurityKey SymmetricSecurityKey { get =>
-                new SymmetricSecurityKey(Encoding.ASCII.GetBytes("Auth:SecretKey")); }
+                new SymmetricSecurityKey(Encoding.ASCII.GetBytes(SecretKey)); }
     }
 }
