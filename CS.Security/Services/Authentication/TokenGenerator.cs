@@ -16,6 +16,8 @@ namespace CS.Security.Servises.Authentication
 
         private readonly UserManager<User> _userManager;
         private readonly AuthSettings _authSettings;
+
+        private const string EmailConfirmedClaimKey = "EmailConfirmed";
         public TokenGenerator(UserManager<User> userManager, AuthSettings authSettings)
         {
             _userManager = userManager;
@@ -28,9 +30,11 @@ namespace CS.Security.Servises.Authentication
             var roles = await _userManager.GetRolesAsync(user);
 
             ClaimsIdentity identity = new ClaimsIdentity(new[] {
+                new Claim(ClaimTypes.Name, user.UserName),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Role, roles.FirstOrDefault()),
+                new Claim(EmailConfirmedClaimKey, user.EmailConfirmed.ToString())
             });
 
             var securityToken = handler.CreateToken(new SecurityTokenDescriptor
