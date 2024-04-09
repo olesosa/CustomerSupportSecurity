@@ -1,5 +1,4 @@
-﻿using CS.Security.DataAccess;
-using CS.Security.Interfaces;
+﻿using CS.Security.Interfaces;
 using CS.Security.Models;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -11,11 +10,9 @@ namespace CS.Security.Services
 {
     public class EmailService : IEmailService
     {
-        private const string ngrok = "https://5755-91-218-106-76.ngrok-free.app";
-        // ngrok http https://localhost:7007/ --host-header="localhost:7007" 
-        // TODO change ngrok link here
+      private static readonly string ApiIdentityAddress = ConstVariables.NgrokAddress;
 
-        readonly UserManager<User> _userManager;
+      readonly UserManager<User> _userManager;
 
         public EmailService(UserManager<User> userManager)
         {
@@ -24,7 +21,7 @@ namespace CS.Security.Services
 
         private async Task<string> CallBackUrl(User user, string code)
         {
-            var callback_url = ngrok + "/api/Users/EmailVerification" + $"?userId={user.Id}&code={code}";
+            var callback_url = ApiIdentityAddress + "/api/Users/EmailVerification" + $"?userId={user.Id}&code={code}";
 
             return await Task.FromResult(callback_url);
         }
