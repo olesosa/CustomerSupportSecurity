@@ -2,7 +2,7 @@
 
 namespace CS.Security.DTO
 {
-    public class TokenRequestDto
+    public class TokenDto
     {
         public string? Token { get; set; }
         public string? RefreshToken { get; set; }

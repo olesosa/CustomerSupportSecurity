@@ -55,7 +55,7 @@ public class AdminService : IAdminService
 
         if (admin == null)
         {
-            throw new ApiException(404, "Admin to delete not found");
+            throw new AuthException(404, "Admin to delete not found");
         }
 
         var result = await _userManager.DeleteAsync(admin);
