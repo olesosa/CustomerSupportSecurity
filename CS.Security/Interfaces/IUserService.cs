@@ -5,12 +5,11 @@ namespace CS.Security.Interfaces
     public interface IUserService
     {
         Task<UserDto> Create(UserSignUpDto user);
-        Task<TokenDto?> VerifyToken(TokenDto token);
+        Task<TokenDto> VerifyToken(TokenDto token);
         Task<TokenDto> GetTokens(UserLogInDto user);
         Task<bool> VerifyEmail(Guid userId, string code);
         Task<bool> Delete(string userId);
-        Task<UserDto> GetById(Guid userId);
-        Task<bool> IsUserExist(string email);
+        Task<UserInfoDto> GetById(Guid userId);
 
     }
 }

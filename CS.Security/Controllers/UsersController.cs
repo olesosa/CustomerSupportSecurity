@@ -87,17 +87,19 @@ namespace CS.Security.Controllers
         }
         
         [Authorize]
-        [HttpPost]
-        public async Task<IActionResult> IsUserExist([FromBody] string email)
+        [HttpGet]
+        public async Task<IActionResult> GetUserInfo()
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var result = await _userService.IsUserExist(email);
+            var userId = Guid.Parse(HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            var user = await _userService.GetById(userId);
             
-            return Ok(result);
+            return Ok(user);
         }
     }
 }

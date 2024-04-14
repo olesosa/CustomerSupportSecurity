@@ -10,7 +10,7 @@ namespace CS.Security.Services
 {
     public class EmailService : IEmailService
     {
-      private static readonly string ApiIdentityAddress = ConstVariables.NgrokAddress;
+      private static readonly string ApiIdentityAddress = Environments.ApiIdentityAddress;
 
       readonly UserManager<User> _userManager;
 

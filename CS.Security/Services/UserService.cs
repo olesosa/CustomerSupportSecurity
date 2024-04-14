@@ -4,7 +4,6 @@ using CS.Security.DTO;
 using CS.Security.Helpers;
 using CS.Security.Interfaces;
 using CS.Security.Models;
-using CS.Security.Services.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -143,7 +142,7 @@ namespace CS.Security.Services
             return result;
         }
 
-        public async Task<UserDto> GetById(Guid userId)
+        public async Task<UserInfoDto> GetById(Guid userId)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
@@ -152,14 +151,15 @@ namespace CS.Security.Services
                 throw new AuthException(404, "User not found");
             }
 
-            return _mapper.Map<UserDto>(user);
-        }
+            var userRoles = await _userManager.GetRolesAsync(user);
 
-        public async Task<bool> IsUserExist(string email)
-        {
-            var user = await _userManager.FindByEmailAsync(email);
-
-            return user != null;
+            return new UserInfoDto()
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                Email = user.Email,
+                RoleName = userRoles.First(),
+            };
         }
     }
 }
