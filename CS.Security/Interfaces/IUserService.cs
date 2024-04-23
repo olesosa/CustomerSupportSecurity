@@ -10,6 +10,5 @@ namespace CS.Security.Interfaces
         Task<bool> VerifyEmail(Guid userId, string code);
         Task<bool> Delete(string userId);
         Task<UserInfoDto> GetById(Guid userId);
-
     }
 }

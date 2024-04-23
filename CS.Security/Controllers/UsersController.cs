@@ -12,6 +12,7 @@ namespace CS.Security.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly string url = Environments.FrontAddress;
 
         public UsersController(IUserService userService)
         {
@@ -55,12 +56,12 @@ namespace CS.Security.Controllers
                 return BadRequest(ModelState);
             }
 
-            if (await _userService.VerifyEmail(userId, code))
+            if (!await _userService.VerifyEmail(userId, code))
             {
-                return Ok();
+                throw new AuthException(400, "Bad request");
             }
 
-            throw new AuthException(400, "Bad request");
+            return Redirect($"{url}login");
         }
 
         [AllowAnonymous]
