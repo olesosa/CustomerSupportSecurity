@@ -1,4 +1,4 @@
-﻿using CS.Security.Interfaces;
+using CS.Security.Interfaces;
 using CS.Security.Models;
 using MailKit.Net.Smtp;
 using MailKit.Security;

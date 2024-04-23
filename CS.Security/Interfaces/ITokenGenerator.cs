@@ -1,5 +1,6 @@
-﻿using CS.Security.DTO;
+using CS.Security.DTO;
 using CS.Security.Models;
+
 using CS.Security.Services.Authentication;
 
 namespace CS.Security.Interfaces

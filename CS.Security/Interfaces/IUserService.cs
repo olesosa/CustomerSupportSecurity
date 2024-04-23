@@ -1,4 +1,4 @@
-﻿using CS.Security.DTO;
+using CS.Security.DTO;
 
 namespace CS.Security.Interfaces
 {
