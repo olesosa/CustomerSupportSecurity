@@ -4,7 +4,6 @@ using CS.Security.DTO;
 using CS.Security.Helpers;
 using CS.Security.Interfaces;
 using CS.Security.Models;
-using CS.Security.Services.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,6 +30,13 @@ namespace CS.Security.Services
         public async Task<UserDto> Create(UserSignUpDto userDto)
         {
             var user = _mapper.Map<User>(userDto);
+
+            var exist = await _context.Users.AnyAsync(u => u.Email == user.Email);
+
+            if (exist)
+            {
+                throw new AuthException(400, "User already exist");
+            }
             
             var creationResult = await _userManager.CreateAsync(user, userDto.Password);
 
@@ -42,7 +48,7 @@ namespace CS.Security.Services
 
                 if (!roleResult.Succeeded)
                 {
-                    throw new ApiException(500,"Error while giving role");
+                    throw new AuthException(500,"Error while giving role");
                 }
                 
                 var emailResult = await _emailService.SendEmail(createdUser);
@@ -51,72 +57,65 @@ namespace CS.Security.Services
                 {
                     _context.Users.Remove(createdUser);
                     
-                    throw new ApiException(500,"Can not send an verification email");
+                    throw new AuthException(500,"Can not send an verification email");
                 }
                 
                 return _mapper.Map<UserDto>(createdUser);
             }
 
-            throw new ApiException(500,"Can not create user");
+            throw new AuthException(500,"Can not create user");
         }
 
-        public async Task<bool> CheckPassword(UserLogInDto userDto, string password)
+        public async Task<TokenDto> VerifyToken(TokenDto token)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userDto.Email);
-
-            if (user == null)
-            {
-                throw new ApiException(400, "User does nor exist");
-            }
-
-            return await _userManager.CheckPasswordAsync(user, password);
-        }
-
-        public async Task<TokenResponseModel?> VerifyToken(TokenRequestDto tokenRequest)
-        {
-            var response = await _tokenGenerator.RefreshAccessToken(tokenRequest.Token, tokenRequest.RefreshToken);
+            var response = await _tokenGenerator.RefreshAccessToken(token.Token, token.RefreshToken);
 
             if (response == null)
             {
-                throw new ApiException(400, "Response generation error");
+                throw new AuthException(400, "Response generation error");
             }
 
             return response;
         }
 
-        public async Task<TokenResponseModel> GetTokens(string email)
+        public async Task<TokenDto> GetTokens(UserLogInDto userDto)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == userDto.Email);
+
+            if (user == null)
+            {
+                throw new AuthException(400, "User doesnt exist");
+            }
+
+            if (!await _userManager.CheckPasswordAsync(user, userDto.Password))
+            {
+                throw new AuthException(400, "Incorrect email or password");
+            }
 
             if (!await _userManager.IsEmailConfirmedAsync(user))
             {
-                throw new ApiException(401, "Email is not confirmed");
+                throw new AuthException(401, "Email is not confirmed");
             }
             
             return await _tokenGenerator.GenerateTokens(user);
         }
 
-        public async Task<bool> IsUserExist(Guid userId)
-        {
-            return await _context.Users.AnyAsync(u => u.Id == userId);
-        }
-
-        public async Task<bool> IsUserExist(string email)
-        {
-            var exist = await _context.Users.AnyAsync(u => u.Email == email);
-
-            return exist;
-        }
-
         public async Task<bool> VerifyEmail(Guid userId, string code)
         {
+            var exist = await _context.Users.AnyAsync(u => u.Id == userId);
+
+            if (!exist)
+            {
+                throw new AuthException(400, "User doesnt exist");
+            }
+            
             code = code.Replace(' ', '+');
             
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
             if (user == null)
             {
-                throw new ApiException(404, "User does not exist");
+                throw new AuthException(404, "User does not exist");
             }
             
             var result = await _userManager.ConfirmEmailAsync(user, code);
@@ -130,17 +129,37 @@ namespace CS.Security.Services
 
             if (user == null)
             {
-                throw new ApiException(404, "User not found");
+                throw new AuthException(404, "User not found");
             }
             
             var result = _userManager.DeleteAsync(user).IsCompletedSuccessfully;
 
             if (!result)
             {
-                throw new ApiException(500, "Can not delete user");
+                throw new AuthException(500, "Can not delete user");
             }
             
             return result;
+        }
+
+        public async Task<UserInfoDto> GetById(Guid userId)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+            {
+                throw new AuthException(404, "User not found");
+            }
+
+            var userRoles = await _userManager.GetRolesAsync(user);
+
+            return new UserInfoDto()
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                Email = user.Email,
+                RoleName = userRoles.First(),
+            };
         }
     }
 }

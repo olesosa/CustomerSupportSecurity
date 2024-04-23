@@ -1,4 +1,3 @@
-﻿using CS.Security.DataAccess;
 using CS.Security.Interfaces;
 using CS.Security.Models;
 using MailKit.Net.Smtp;
@@ -11,9 +10,7 @@ namespace CS.Security.Services
 {
     public class EmailService : IEmailService
     {
-        private const string ngrok = "https://5755-91-218-106-76.ngrok-free.app";
-        // ngrok http https://localhost:7007/ --host-header="localhost:7007" 
-        // TODO change ngrok link here
+        private static readonly string ApiIdentityAddress = Environments.ApiIdentityAddress;
 
         readonly UserManager<User> _userManager;
 
@@ -22,97 +19,91 @@ namespace CS.Security.Services
             _userManager = userManager;
         }
 
-        private async Task<string> CallBackUrl(User user, string code)
-        {
-            var callback_url = ngrok + "/api/Users/EmailVerification" + $"?userId={user.Id}&code={code}";
-
-            return await Task.FromResult(callback_url);
-        }
-
         public async Task<bool> SendEmail(User user)
         {
             var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            var callback_url = await CallBackUrl(user, code);
+            var url = ApiIdentityAddress + "/api/Users/EmailVerification" + $"?userId={user.Id}&code={code}";
 
-            try
+            var email = new MimeMessage();
+            email.From.Add(MailboxAddress.Parse("alexbobr1337@gmail.com"));
+            email.To.Add(MailboxAddress.Parse(user.Email));
+            email.Subject = "Email verification";
+            email.Body = email.Body = new TextPart(TextFormat.Html)
             {
-                var email = new MimeMessage();
-                email.From.Add(MailboxAddress.Parse("alexbobr1337@gmail.com"));
-                email.To.Add(MailboxAddress.Parse(user.Email));
-                email.Subject = "Email verification";
-                email.Body = email.Body = new TextPart(TextFormat.Html)
-                {
-                    Text = $@"<!DOCTYPE html>
-<html>
+                Text = $@"
+<!DOCTYPE html>
+<html lang=""en"">
 <head>
-  <meta http-equiv=""Content-Type"" content=""text/html"" charset=""UTF-8"" />
-  <title>Email Verification</title>
-  <link href=""https://fonts.googleapis.com/css2?family=Lato&display=swap"" rel=""stylesheet"">
-  <style>
-    .button-container {{
-      text-align: center;
-    }}
-    .verify-button {{
-      background-color: transparent; /* Transparent button background */
-      color: black; /* Text color */
-      width: 175px;
-      height: 35px;
-      font-family: 'Lato', sans-serif;
-      font-size: 1em;
-      border: 2px solid black; /* Black border */
-      border-radius: 20px;
-      text-decoration: none;
-      display: inline-block;
-      line-height: 35px;
-      text-align: center;
-    }}
-    .email-text {{
-      color: #333;
-      font-size: 1em;
-    }}
-  </style>
+    <meta charset=""UTF-8"">
+    <meta http-equiv=""X-UA-Compatible"" content=""IE=edge"">
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+    <title>Email Verification</title>
+    <style>
+        /* Reset styles */
+        body, h1, p {{
+            margin: 0;
+            padding: 0;
+        }}
+
+        body {{
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+        }}
+
+        .container {{
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }}
+
+        h1 {{
+            font-size: 24px;
+            margin-bottom: 20px;
+        }}
+
+        p {{
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }}
+
+        .btn {{
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 5px;
+        }}
+    </style>
 </head>
 <body>
-
-  <table cellpadding=""0"" cellspacing=""0"" border=""0"">
-    <tr>
-      <td>
-        <h2>Email Verification</h2>
-        <p class=""email-text"">Thank you for signing up! To verify your email address, please click the link below:</p>
-      </td>
-    </tr>
-    <tr>
-      <td style=""text-align: center;"">
-        <div class=""button-container"">
-          <a class=""verify-button"" href=""{callback_url}"">Verify Email</a>
-        </div>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <p class=""email-text"">If you didn't sign up for this service, please ignore this email.</p>
-        <p class=""email-text"" style=""margin-bottom: 5px;"">Best regards,</p>
-        <p class=""email-text"" style=""margin: 0;"">Little Kittens Pizzeria</p>
-      </td>
-    </tr>
-  </table>
+    <div class=""container"">
+        <h1>Email Verification</h1>
+        <p>Dear User,</p>
+        <p>Thank you for signing up for our service. To verify your email address and activate your account, please click the button below:</p>
+        <a href=""{url}"" class=""btn"">Verify Email</a>
+        <p>If you did not sign up for our service, please disregard this email.</p>
+        <p>For any questions or assistance, please contact our Customer Support at <a href=""mailto:customersupport@example.com"">customersupport@example.com</a>.</p>
+        <p>Best Regards,<br>Your Service Team</p>
+    </div>
 </body>
-</html>"
-                };
+</html>
+"
+            };
 
-                using var smtp = new SmtpClient();
-                await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-                await smtp.AuthenticateAsync("alexbobr1337@gmail.com", "hklu emus pdgn dpxk");
+            using var smtp = new SmtpClient();
+            await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
+            await smtp.AuthenticateAsync("alexbobr1337@gmail.com", "hklu emus pdgn dpxk");
 
-                await smtp.SendAsync(email);
-                await smtp.DisconnectAsync(true);
+            await smtp.SendAsync(email);
+            await smtp.DisconnectAsync(true);
 
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            return true;
         }
     }
 }

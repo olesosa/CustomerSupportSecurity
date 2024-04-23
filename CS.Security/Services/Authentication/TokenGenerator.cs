@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using CS.Security.DTO;
 using CS.Security.Helpers;
 using CS.Security.Interfaces;
 using CS.Security.Models;
@@ -36,7 +37,7 @@ namespace CS.Security.Services.Authentication
                 new Claim(ClaimTypes.Name, user.UserName),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Role, roles.FirstOrDefault()),
+                new Claim(ClaimTypes.Role, roles.FirstOrDefault()!),
                 new Claim(EmailConfirmedClaimKey, user.EmailConfirmed.ToString())
             });
 
@@ -62,12 +63,11 @@ namespace CS.Security.Services.Authentication
             }
         }
 
-        public async Task<TokenResponseModel> GenerateTokens(User user)
+        public async Task<TokenDto> GenerateTokens(User user)
         {
             user.RefreshToken = GenerateRefreshToken(user);
             user.ExpirationTime = DateTimeOffset.UtcNow.AddSeconds(_authSettings.AccessTokenExpirationMinutes)
                 .ToUnixTimeSeconds();
-            // DateTimeOffset.FromUnixTimeSeconds(user.ExpirationTime);
 
             var result = await _userManager.UpdateAsync(user);
 
@@ -76,21 +76,23 @@ namespace CS.Security.Services.Authentication
                 throw new Exception("Unable to create refresh token");
             }
 
-            return new TokenResponseModel
+            return new TokenDto
             {
-                AccessToken = await GenerateAccessToken(user),
+                Token = await GenerateAccessToken(user),
                 RefreshToken = user.RefreshToken,
             };
         }
 
-        public async Task<TokenResponseModel> RefreshAccessToken(string accessToken, string refreshToken)
+        public async Task<TokenDto> RefreshAccessToken(string accessToken, string refreshToken)
         {
             var principal = GetPrincipalFromExpiredToken(accessToken);
-            var user = await _userManager.FindByNameAsync(principal.Identity.Name);
+            
+            var email = principal.FindFirst(ClaimTypes.Email)?.Value;
+            var user = await _userManager.FindByEmailAsync(email);
 
             if (user == null || user.RefreshToken != refreshToken)
             {
-                throw new SecurityTokenException("Invalid refresh token");
+                throw new AuthException(401, "Invalid refresh token");
             }
 
             user.RefreshToken = GenerateRefreshToken(user);
@@ -98,12 +100,12 @@ namespace CS.Security.Services.Authentication
 
             if (!result.Succeeded)
             {
-                throw new Exception("Unable to create refresh token");
+                throw new AuthException(401, "Unable to create refresh token");
             }
 
-            return new TokenResponseModel
+            return new TokenDto()
             {
-                AccessToken = await GenerateAccessToken(user),
+                Token = await GenerateAccessToken(user),
                 RefreshToken = user.RefreshToken
             };
         }
@@ -128,8 +130,7 @@ namespace CS.Security.Services.Authentication
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
-                throw new ApiException(500, e.Message);
+                throw new AuthException(500, e.Message);
             }
         }
     }

@@ -1,18 +1,14 @@
-﻿using CS.Security.DTO;
-using CS.Security.Models;
-using CS.Security.Services.Authentication;
+using CS.Security.DTO;
 
 namespace CS.Security.Interfaces
 {
     public interface IUserService
     {
         Task<UserDto> Create(UserSignUpDto user);
-        Task<bool> CheckPassword(UserLogInDto user, string password);
-        Task<TokenResponseModel?> VerifyToken(TokenRequestDto tokenRequest);
-        Task<TokenResponseModel> GetTokens(string email);
-        Task<bool> IsUserExist(Guid userId);
-        Task<bool> IsUserExist(string email);
+        Task<TokenDto> VerifyToken(TokenDto token);
+        Task<TokenDto> GetTokens(UserLogInDto user);
         Task<bool> VerifyEmail(Guid userId, string code);
         Task<bool> Delete(string userId);
+        Task<UserInfoDto> GetById(Guid userId);
     }
 }

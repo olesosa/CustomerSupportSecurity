@@ -12,6 +12,7 @@ namespace CS.Security.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly string url = Environments.FrontAddress;
 
         public UsersController(IUserService userService)
         {
@@ -25,11 +26,6 @@ namespace CS.Security.Controllers
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
-            }
-
-            if (await _userService.IsUserExist(userSignUp.Email))
-            {
-                return BadRequest("User already exist");
             }
 
             var createdUser = await _userService.Create(userSignUp);
@@ -46,17 +42,7 @@ namespace CS.Security.Controllers
                 return BadRequest(ModelState);
             }
 
-            if (!await _userService.IsUserExist(userLogIn.Email))
-            {
-                return NotFound("User does not exist");
-            }
-
-            if (!await _userService.CheckPassword(userLogIn, userLogIn.Password))
-            {
-                return BadRequest("Incorrect email or password");
-            }
-
-            var token = await _userService.GetTokens(userLogIn.Email);
+            var token = await _userService.GetTokens(userLogIn);
 
             return Ok(token);
         }
@@ -70,27 +56,22 @@ namespace CS.Security.Controllers
                 return BadRequest(ModelState);
             }
 
-            if (!await _userService.IsUserExist(userId))
+            if (!await _userService.VerifyEmail(userId, code))
             {
-                return BadRequest("Invalid email parameter");
+                throw new AuthException(400, "Bad request");
             }
 
-            if (await _userService.VerifyEmail(userId, code)) // TODO: add email htmls
-            {
-                return Ok();
-            }
-
-            throw new ApiException(400, "Bad request");
+            return Redirect($"{url}login");
         }
 
         [AllowAnonymous]
         [HttpPost("Token")]
-        public async Task<IActionResult> RefreshToken([FromBody] TokenRequestDto tokenRequest)
+        public async Task<IActionResult> RefreshToken([FromBody] TokenDto tokenDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var token = await _userService.VerifyToken(tokenRequest);
+            var token = await _userService.VerifyToken(tokenDto);
 
             return Ok(token);
         }
@@ -104,6 +85,22 @@ namespace CS.Security.Controllers
             await _userService.Delete(userId);
 
             return Ok("User is deleted");
+        }
+        
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> GetUserInfo()
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var userId = Guid.Parse(HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            var user = await _userService.GetById(userId);
+            
+            return Ok(user);
         }
     }
 }

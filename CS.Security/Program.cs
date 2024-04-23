@@ -1,23 +1,18 @@
 using CS.Security.DataAccess;
 using CS.Security.Interfaces;
 using CS.Security.Models;
-using CS.Security.Servises;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using AutoMapper;
-using CS.Security.DTO;
 using CS.Security.Helpers;
 using CS.Security.Helpers.DtoValidators;
 using CS.Security.Services;
 using CS.Security.Services.Authentication;
 using FluentValidation;
-using FluentValidation.AspNetCore;
 using Microsoft.OpenApi.Models;
 using Serilog;
-using Mapper = CS.Security.Servises.Mapper;
 
 namespace CS.Security
 {
@@ -75,6 +70,8 @@ namespace CS.Security
             builder.Services.AddValidatorsFromAssemblyContaining<AdminCreateDtoValidator>();
             builder.Services.AddValidatorsFromAssemblyContaining<UserLogInValidator>();
             builder.Services.AddValidatorsFromAssemblyContaining<UserSignUpValidator>();
+            builder.Services.AddValidatorsFromAssemblyContaining<TokenDtoValidator>();
+
 
             builder.Services.AddIdentity<User, IdentityRole<Guid>>()
                 .AddEntityFrameworkStores<ApplicationContext>()
