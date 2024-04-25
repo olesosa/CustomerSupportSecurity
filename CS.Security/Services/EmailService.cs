@@ -22,7 +22,7 @@ namespace CS.Security.Services
         public async Task<bool> SendEmail(User user)
         {
             var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            var url = ApiIdentityAddress + "/api/Users/EmailVerification" + $"?userId={user.Id}&code={code}";
+            var url = ApiIdentityAddress + "/Users/EmailVerification" + $"?userId={user.Id}&code={code}";
 
             var email = new MimeMessage();
             email.From.Add(MailboxAddress.Parse("alexbobr1337@gmail.com"));

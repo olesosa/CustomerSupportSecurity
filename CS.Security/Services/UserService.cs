@@ -87,16 +87,16 @@ namespace CS.Security.Services
                 throw new AuthException(400, "User doesnt exist");
             }
 
+            if (!await _userManager.IsEmailConfirmedAsync(user))
+            {
+                throw new AuthException(401, "Email is not confirmed");
+            }
+
             if (!await _userManager.CheckPasswordAsync(user, userDto.Password))
             {
                 throw new AuthException(400, "Incorrect email or password");
             }
 
-            if (!await _userManager.IsEmailConfirmedAsync(user))
-            {
-                throw new AuthException(401, "Email is not confirmed");
-            }
-            
             return await _tokenGenerator.GenerateTokens(user);
         }
 

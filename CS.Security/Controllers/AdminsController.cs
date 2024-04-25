@@ -45,4 +45,17 @@ public class AdminsController : ControllerBase
 
         return NotFound("Admin not found");
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAdmins()
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var admins = await _adminService.GetAll();
+        
+        return Ok(admins);
+    }
 }
