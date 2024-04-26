@@ -62,4 +62,18 @@ public class AdminService : IAdminService
 
         return result.Succeeded;
     }
+
+    public async Task<List<AdminDto>> GetAll()
+    {
+        var adminRole = await _roleManager.FindByNameAsync("Admin");
+
+        var admins = await _userManager.GetUsersInRoleAsync(adminRole.Name);
+
+        if (admins == null)
+        {
+            throw new AuthException(404, "No admins found");
+        }
+
+        return admins.Select(_mapper.Map<AdminDto>).ToList();
+    }
 }
