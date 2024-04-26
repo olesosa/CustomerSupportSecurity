@@ -72,6 +72,7 @@ namespace CS.Security
             builder.Services.AddValidatorsFromAssemblyContaining<UserSignUpValidator>();
             builder.Services.AddValidatorsFromAssemblyContaining<TokenDtoValidator>();
 
+
             builder.Services.AddIdentity<User, IdentityRole<Guid>>()
                 .AddEntityFrameworkStores<ApplicationContext>()
                 .AddDefaultTokenProviders();
