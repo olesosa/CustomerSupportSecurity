@@ -1,3 +1,4 @@
+using CS.Security.DTO;
 using CS.Security.Models;
 using Microsoft.AspNetCore.Identity;
 
@@ -21,24 +22,32 @@ public class DataSeeder
     
     public async Task SeedRoles() 
     {
-        if (!await _roleManager.RoleExistsAsync("User"))
-            await _roleManager.CreateAsync(new IdentityRole<Guid>("User"));
-        if (!await _roleManager.RoleExistsAsync("Admin"))
-            await _roleManager.CreateAsync(new IdentityRole<Guid>("Admin"));
-        if (!await _roleManager.RoleExistsAsync("SuperAdmin"))
-            await _roleManager.CreateAsync(new IdentityRole<Guid>("SuperAdmin"));
+        if (!await _roleManager.RoleExistsAsync(UserRoles.User))
+        {
+            await _roleManager.CreateAsync(new IdentityRole<Guid>(UserRoles.User));
+        }
+        
+        if (!await _roleManager.RoleExistsAsync(UserRoles.Admin))
+        {
+            await _roleManager.CreateAsync(new IdentityRole<Guid>(UserRoles.Admin));
+        }
+        
+        if (!await _roleManager.RoleExistsAsync(UserRoles.SuperAdmin))
+        {
+            await _roleManager.CreateAsync(new IdentityRole<Guid>(UserRoles.SuperAdmin));
+        }
     }
 
     public async Task SeedSuperAdmin()
     {
         var superAdminId = Guid.Parse("233ddc36-d493-4a74-b414-9f284c41eb61");
         
-        string email = "super@gmail.com";
-        string password = "P@ssword123";
+        const string email = "super@gmail.com";
+        const string password = "P@ssword123";
 
         if (await _userManager.FindByIdAsync(superAdminId.ToString()) == null)
         {
-            var superAdmin = new User()
+            var superAdmin = new User
             {
                 Id = superAdminId,
                 UserName = "SuperOles",
@@ -58,8 +67,8 @@ public class DataSeeder
     {
         var adminId = Guid.Parse("52c8d3a8-ebff-4309-9fb7-02b7e56a32a4");
         
-        string email = "oleosad@gmail.com";
-        string password = "P@ssword123";
+        const string email = "oleosad@gmail.com";
+        const string password = "P@ssword123";
 
         if (await _userManager.FindByIdAsync(adminId.ToString()) == null)
         {

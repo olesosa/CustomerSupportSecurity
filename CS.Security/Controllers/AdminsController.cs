@@ -10,35 +10,37 @@ namespace CS.Security.Controllers;
 [Authorize(Roles = "SuperAdmin")]
 public class AdminsController : ControllerBase
 {
-    private readonly IAdminService _adminService;
+    private readonly IUserService _userService;
 
-    public AdminsController(IAdminService adminService)
+    public AdminsController(IUserService userService)
     {
-        _adminService = adminService;
+        _userService = userService;
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] AdminCreateDto adminDto)
+    public async Task<IActionResult> Create(
+        [FromBody] UserSignUpDto adminDto)
     {
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
         }
 
-        var createdAdmin = await _adminService.Create(adminDto);
+        var createdAdmin = await _userService.Create(adminDto, UserRoles.Admin, false);
 
         return Ok(createdAdmin);
     }
 
     [HttpDelete("{adminId:guid}")]
-    public async Task<IActionResult> Remove([FromRoute] Guid adminId)
+    public async Task<IActionResult> Remove(
+        [FromRoute] Guid adminId)
     {
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
         }
 
-        if (await _adminService.RemoveAdmin(adminId))
+        if (await _userService.Delete(adminId.ToString()))
         {
             return Ok("Admin was deleted");
         }
@@ -54,7 +56,7 @@ public class AdminsController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var admins = await _adminService.GetAll();
+        var admins = await _userService.GetAll(new List<string>{ UserRoles.Admin });
         
         return Ok(admins);
     }

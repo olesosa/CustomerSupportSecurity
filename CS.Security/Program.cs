@@ -63,19 +63,14 @@ namespace CS.Security
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<ITokenGenerator, TokenGenerator>();
-            builder.Services.AddScoped<IAdminService, AdminService>();
             builder.Services.AddScoped<DataSeeder>();
             builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-            builder.Services.AddValidatorsFromAssemblyContaining<AdminCreateDtoValidator>();
             builder.Services.AddValidatorsFromAssemblyContaining<UserLogInValidator>();
-            builder.Services.AddValidatorsFromAssemblyContaining<UserSignUpValidator>();
-            builder.Services.AddValidatorsFromAssemblyContaining<TokenDtoValidator>();
-
 
             builder.Services.AddIdentity<User, IdentityRole<Guid>>()
-                .AddEntityFrameworkStores<ApplicationContext>()
-                .AddDefaultTokenProviders();
+                   .AddEntityFrameworkStores<ApplicationContext>()
+                   .AddDefaultTokenProviders();
 
             builder.Services.AddCors(options =>
             {
@@ -153,7 +148,7 @@ namespace CS.Security
         {
             using var scope = app.Services.CreateScope();
             var seedService = scope.ServiceProvider.GetRequiredService<DataSeeder>();
-            if (seedService == null) return;
+
             await seedService.SeedRoles();
             await seedService.SeedAllData();
         }

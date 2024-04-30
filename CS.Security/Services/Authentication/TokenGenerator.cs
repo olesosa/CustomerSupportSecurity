@@ -9,129 +9,122 @@ using CS.Security.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 
-namespace CS.Security.Services.Authentication
+namespace CS.Security.Services.Authentication;
+
+public class TokenGenerator : ITokenGenerator
 {
-    public class TokenGenerator : ITokenGenerator
+    private const int RefreshTokenSize = 32;
+
+    private readonly UserManager<User> _userManager;
+    private readonly AuthSettings _authSettings;
+
+    private const string EmailConfirmedClaimKey = "EmailConfirmed";
+
+    public TokenGenerator(UserManager<User> userManager, AuthSettings authSettings)
     {
-        private const int RefreshTokenSize = 32;
+        _userManager = userManager;
+        _authSettings = authSettings;
+    }
 
-        private readonly UserManager<User> _userManager;
-        private readonly AuthSettings _authSettings;
+    public async Task<TokenDto> GenerateTokens(User user)
+    {
+        user.RefreshToken = GenerateRefreshToken();
+        user.ExpirationTime = DateTimeOffset.UtcNow.AddSeconds(_authSettings.AccessTokenExpirationMinutes)
+                                            .ToUnixTimeSeconds();
 
-        private const string EmailConfirmedClaimKey = "EmailConfirmed";
+        var result = await _userManager.UpdateAsync(user);
 
-        public TokenGenerator(UserManager<User> userManager, AuthSettings authSettings)
+        if (!result.Succeeded)
         {
-            _userManager = userManager;
-            _authSettings = authSettings;
+            throw new Exception("Unable to create refresh token");
         }
 
-        public async Task<string> GenerateAccessToken(User user)
-        {
-            var handler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_authSettings.SecretKey);
-            var roles = await _userManager.GetRolesAsync(user);
+        return new TokenDto(
+            await GenerateAccessToken(user),
+            user.RefreshToken);
+    }
 
-            ClaimsIdentity identity = new ClaimsIdentity(new[]
-            {
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Role, roles.FirstOrDefault()!),
-                new Claim(EmailConfirmedClaimKey, user.EmailConfirmed.ToString())
-            });
-
-            var securityToken = handler.CreateToken(new SecurityTokenDescriptor
-            {
-                Issuer = _authSettings.Issuer,
-                Audience = _authSettings.Audience,
-                SigningCredentials =
-                    new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
-                Subject = identity,
-                Expires = DateTime.Now.AddMinutes(_authSettings.AccessTokenExpirationMinutes)
-            });
-            return handler.WriteToken(securityToken);
-        }
-
-        public string GenerateRefreshToken(User user)
-        {
-            var randomNumber = new byte[RefreshTokenSize];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomNumber);
-                return Convert.ToBase64String(randomNumber);
-            }
-        }
-
-        public async Task<TokenDto> GenerateTokens(User user)
-        {
-            user.RefreshToken = GenerateRefreshToken(user);
-            user.ExpirationTime = DateTimeOffset.UtcNow.AddSeconds(_authSettings.AccessTokenExpirationMinutes)
-                .ToUnixTimeSeconds();
-
-            var result = await _userManager.UpdateAsync(user);
-
-            if (!result.Succeeded)
-            {
-                throw new Exception("Unable to create refresh token");
-            }
-
-            return new TokenDto
-            {
-                Token = await GenerateAccessToken(user),
-                RefreshToken = user.RefreshToken,
-            };
-        }
-
-        public async Task<TokenDto> RefreshAccessToken(string accessToken, string refreshToken)
-        {
-            var principal = GetPrincipalFromExpiredToken(accessToken);
+    public async Task<TokenDto> RefreshAccessToken(string accessToken, string refreshToken)
+    {
+        var principal = GetPrincipalFromExpiredToken(accessToken);
             
-            var email = principal.FindFirst(ClaimTypes.Email)?.Value;
-            var user = await _userManager.FindByEmailAsync(email);
+        var email = principal.FindFirst(ClaimTypes.Email)?.Value;
+        var user = await _userManager.FindByEmailAsync(email);
 
-            if (user == null || user.RefreshToken != refreshToken)
-            {
-                throw new AuthException(401, "Invalid refresh token");
-            }
-
-            user.RefreshToken = GenerateRefreshToken(user);
-            var result = await _userManager.UpdateAsync(user);
-
-            if (!result.Succeeded)
-            {
-                throw new AuthException(401, "Unable to create refresh token");
-            }
-
-            return new TokenDto()
-            {
-                Token = await GenerateAccessToken(user),
-                RefreshToken = user.RefreshToken
-            };
-        }
-
-        private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
+        if (user == null || user.RefreshToken != refreshToken)
         {
-            try
-            {
-                var tokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateAudience = false,
-                    ValidateIssuer = false,
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = _authSettings.SymmetricSecurityKey,
-                    ValidateLifetime = false
-                };
-
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out _);
-
-                return principal;
-            }
-            catch (Exception e)
-            {
-                throw new AuthException(500, e.Message);
-            }
+            throw new AuthException(401, "Invalid refresh token");
         }
+
+        user.RefreshToken = GenerateRefreshToken();
+        var result = await _userManager.UpdateAsync(user);
+
+        if (!result.Succeeded)
+        {
+            throw new AuthException(401, "Unable to create refresh token");
+        }
+
+        return new TokenDto(
+            await GenerateAccessToken(user),
+            user.RefreshToken);
+    }
+
+    private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
+    {
+        try
+        {
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = false,
+                ValidateIssuer = false,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = _authSettings.SymmetricSecurityKey,
+                ValidateLifetime = false
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out _);
+
+            return principal;
+        }
+        catch (Exception e)
+        {
+            throw new AuthException(500, e.Message);
+        }
+    }
+        
+    private async Task<string> GenerateAccessToken(User user)
+    {
+        var handler = new JwtSecurityTokenHandler();
+        var key = Encoding.ASCII.GetBytes(_authSettings.SecretKey);
+        var roles = await _userManager.GetRolesAsync(user);
+
+        var identity = new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.Name, user.UserName),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Role, roles.FirstOrDefault()!),
+            new Claim(EmailConfirmedClaimKey, user.EmailConfirmed.ToString())
+        });
+
+        var securityToken = handler.CreateToken(new SecurityTokenDescriptor
+        {
+            Issuer = _authSettings.Issuer,
+            Audience = _authSettings.Audience,
+            SigningCredentials =
+                new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+            Subject = identity,
+            Expires = DateTime.Now.AddMinutes(_authSettings.AccessTokenExpirationMinutes)
+        });
+        return handler.WriteToken(securityToken);
+    }
+
+    private static string GenerateRefreshToken()
+    {
+        var randomNumber = new byte[RefreshTokenSize];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomNumber);
+        return Convert.ToBase64String(randomNumber);
     }
 }

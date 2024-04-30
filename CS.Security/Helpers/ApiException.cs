@@ -5,7 +5,7 @@ public class ApiException : Exception
     public int Status { get; set; }
     public string Detail { get; set; }
 
-    public ApiException(int status, string detail) : base()
+    public ApiException(int status, string detail)
     {
         Status = status;
         Detail = detail;

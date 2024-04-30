@@ -1,9 +1,8 @@
 ﻿using CS.Security.Models;
 
-namespace CS.Security.Interfaces
+namespace CS.Security.Interfaces;
+
+public interface IEmailService
 {
-    public interface IEmailService
-    {
-        Task<bool> SendEmail(User user);
-    }
+    Task<bool> SendEmail(User user);
 }

@@ -6,31 +6,31 @@ using Microsoft.AspNetCore.Identity;
 using MimeKit;
 using MimeKit.Text;
 
-namespace CS.Security.Services
+namespace CS.Security.Services;
+
+public class EmailService : IEmailService
 {
-    public class EmailService : IEmailService
+    private static readonly string ApiIdentityAddress = Environments.ApiIdentityAddress;
+
+    private readonly UserManager<User> _userManager;
+
+    public EmailService(UserManager<User> userManager)
     {
-        private static readonly string ApiIdentityAddress = Environments.ApiIdentityAddress;
+        _userManager = userManager;
+    }
 
-        readonly UserManager<User> _userManager;
+    public async Task<bool> SendEmail(User user)
+    {
+        var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var url = ApiIdentityAddress + "/Users/EmailVerification" + $"?userId={user.Id}&code={code}";
 
-        public EmailService(UserManager<User> userManager)
+        var email = new MimeMessage();
+        email.From.Add(MailboxAddress.Parse("alexbobr1337@gmail.com"));
+        email.To.Add(MailboxAddress.Parse(user.Email));
+        email.Subject = "Email verification";
+        email.Body = email.Body = new TextPart(TextFormat.Html)
         {
-            _userManager = userManager;
-        }
-
-        public async Task<bool> SendEmail(User user)
-        {
-            var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            var url = ApiIdentityAddress + "/Users/EmailVerification" + $"?userId={user.Id}&code={code}";
-
-            var email = new MimeMessage();
-            email.From.Add(MailboxAddress.Parse("alexbobr1337@gmail.com"));
-            email.To.Add(MailboxAddress.Parse(user.Email));
-            email.Subject = "Email verification";
-            email.Body = email.Body = new TextPart(TextFormat.Html)
-            {
-                Text = $@"
+            Text = $@"
 <!DOCTYPE html>
 <html lang=""en"">
 <head>
@@ -94,16 +94,15 @@ namespace CS.Security.Services
 </body>
 </html>
 "
-            };
+        };
 
-            using var smtp = new SmtpClient();
-            await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-            await smtp.AuthenticateAsync("alexbobr1337@gmail.com", "hklu emus pdgn dpxk");
+        using var smtp = new SmtpClient();
+        await smtp.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
+        await smtp.AuthenticateAsync("alexbobr1337@gmail.com", "hklu emus pdgn dpxk");
 
-            await smtp.SendAsync(email);
-            await smtp.DisconnectAsync(true);
+        await smtp.SendAsync(email);
+        await smtp.DisconnectAsync(true);
 
-            return true;
-        }
+        return true;
     }
 }

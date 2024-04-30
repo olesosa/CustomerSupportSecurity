@@ -13,21 +13,28 @@ namespace CS.Security.Services
     {
         private readonly ApplicationContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly RoleManager<IdentityRole<Guid>> _roleManager;
         private readonly ITokenGenerator _tokenGenerator;
         private readonly IMapper _mapper;
         private readonly IEmailService _emailService;
 
-        public UserService(ApplicationContext context, UserManager<User> userManager, 
-            ITokenGenerator tokenGenerator, IMapper mapper, IEmailService emailService)
+        public UserService(
+            ApplicationContext context,
+            UserManager<User> userManager, 
+            ITokenGenerator tokenGenerator,
+            RoleManager<IdentityRole<Guid>> roleManager,
+            IMapper mapper,
+            IEmailService emailService)
         {
             _context = context;
             _userManager = userManager;
             _tokenGenerator = tokenGenerator;
             _mapper = mapper;
             _emailService = emailService;
+            _roleManager = roleManager;
         }
 
-        public async Task<UserDto> Create(UserSignUpDto userDto)
+        public async Task<UserDto> Create(UserSignUpDto userDto, string role, bool sendInvitationEmail)
         {
             var user = _mapper.Map<User>(userDto);
 
@@ -39,31 +46,36 @@ namespace CS.Security.Services
             }
             
             var creationResult = await _userManager.CreateAsync(user, userDto.Password);
-
-            if (creationResult.Succeeded) 
+            if (!creationResult.Succeeded)
             {
-                var createdUser = await _userManager.FindByEmailAsync(userDto.Email);
-
-                var roleResult = await _userManager.AddToRoleAsync(createdUser, "User");
-
-                if (!roleResult.Succeeded)
-                {
-                    throw new AuthException(500,"Error while giving role");
-                }
-                
-                var emailResult = await _emailService.SendEmail(createdUser);
-
-                if (!emailResult)
-                {
-                    _context.Users.Remove(createdUser);
-                    
-                    throw new AuthException(500,"Can not send an verification email");
-                }
-                
-                return _mapper.Map<UserDto>(createdUser);
+                throw new AuthException(500, "Can not create user");
             }
 
-            throw new AuthException(500,"Can not create user");
+            var createdUser = await _userManager.FindByEmailAsync(userDto.Email);
+
+            var roleResult = await _userManager.AddToRoleAsync(createdUser, role);
+
+            if (!roleResult.Succeeded)
+            {
+                throw new AuthException(500,"Error while giving role");
+            }
+
+            if (!sendInvitationEmail)
+            {
+                return _mapper.Map<UserDto>(createdUser);
+            }
+                
+            var emailResult = await _emailService.SendEmail(createdUser);
+
+            if (emailResult)
+            {
+                return _mapper.Map<UserDto>(createdUser);
+            }
+                
+            _context.Users.Remove(createdUser);
+                        
+            throw new AuthException(500,"Can not send an verification email");
+
         }
 
         public async Task<TokenDto> VerifyToken(TokenDto token)
@@ -132,14 +144,14 @@ namespace CS.Security.Services
                 throw new AuthException(404, "User not found");
             }
             
-            var result = _userManager.DeleteAsync(user).IsCompletedSuccessfully;
+            var result = await _userManager.DeleteAsync(user);
 
-            if (!result)
+            if (!result.Succeeded)
             {
                 throw new AuthException(500, "Can not delete user");
             }
             
-            return result;
+            return result.Succeeded;
         }
 
         public async Task<UserInfoDto> GetById(Guid userId)
@@ -153,13 +165,25 @@ namespace CS.Security.Services
 
             var userRoles = await _userManager.GetRolesAsync(user);
 
-            return new UserInfoDto()
-            {
-                Id = user.Id,
-                UserName = user.UserName,
-                Email = user.Email,
-                RoleName = userRoles.First(),
-            };
+            return new UserInfoDto(
+                user.Id,
+                user.UserName,
+                user.Email,
+                userRoles.First());
+        }
+
+        public async Task<List<UserInfoDto>> GetAll(List<string> roleNames)
+        {
+            var getRoleTasks = roleNames
+                .Select(roleName => _roleManager.FindByNameAsync(roleName));
+            
+            var roles = await Task.WhenAll(getRoleTasks);
+            var getUserTasks = roles.Select(role => _userManager.GetUsersInRoleAsync(role.Name));
+            var users = await Task.WhenAll(getUserTasks);
+
+            return users
+                .Select(_mapper.Map<UserInfoDto>)
+                .ToList();
         }
     }
 }

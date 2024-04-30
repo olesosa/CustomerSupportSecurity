@@ -12,7 +12,7 @@ namespace CS.Security.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly string url = Environments.FrontAddress;
+        private readonly string _url = Environments.FrontAddress;
 
         public UsersController(IUserService userService)
         {
@@ -21,14 +21,15 @@ namespace CS.Security.Controllers
 
         [AllowAnonymous]
         [HttpPost("SignUp")]
-        public async Task<IActionResult> SignUp([FromBody] UserSignUpDto userSignUp)
+        public async Task<IActionResult> SignUp(
+            [FromBody] UserSignUpDto userSignUp)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var createdUser = await _userService.Create(userSignUp);
+            var createdUser = await _userService.Create(userSignUp, UserRoles.User, true);
 
             return Ok(createdUser);
         }
@@ -61,7 +62,7 @@ namespace CS.Security.Controllers
                 throw new AuthException(400, "Bad request");
             }
 
-            return Redirect($"{url}login");
+            return Redirect($"{_url}login");
         }
 
         [AllowAnonymous]

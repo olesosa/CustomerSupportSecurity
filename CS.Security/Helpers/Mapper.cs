@@ -2,7 +2,7 @@ using AutoMapper;
 using CS.Security.DTO;
 using CS.Security.Models;
 
-namespace CS.Security.Servises;
+namespace CS.Security.Helpers;
 
 public class Mapper : Profile
 {
