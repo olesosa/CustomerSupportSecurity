@@ -38,7 +38,7 @@ public class AdminsController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        if (await _adminService.RemoveAdmin(adminId))
+        if (await _adminService.RemoveAdmin(adminId))//this is unclear. an exception is already thrown when admin is not found
         {
             return Ok("Admin was deleted");
         }
