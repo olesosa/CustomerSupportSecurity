@@ -1,10 +1,9 @@
 ﻿using Microsoft.AspNetCore.Identity;
 
-namespace CS.Security.Models
+namespace CS.Security.Models;
+
+public class User : IdentityUser<Guid>
 {
-    public class User : IdentityUser<Guid>
-    {
-        public string? RefreshToken { get; set; }
-        public long ExpirationTime { get; set; }
-    }
+    public string? RefreshToken { get; set; }
+    public long ExpirationTime { get; set; }
 }

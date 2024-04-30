@@ -1,10 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿namespace CS.Security.DTO;
 
-namespace CS.Security.DTO
-{
-    public class TokenDto
-    {
-        public string Token { get; set; }
-        public string RefreshToken { get; set; }
-    }
-}
+public record TokenDto(
+	string Token,
+	string RefreshToken);

@@ -1,4 +1,3 @@
-using System.Security.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Formatters;
@@ -33,13 +32,14 @@ public class CustomExceptionFilter : IExceptionFilter
             Detail = detail,
         };
 
-        if (problem.Status >= StatusCodes.Status500InternalServerError)
+        switch (problem.Status)
         {
-            _logger.LogError(context.Exception, "Server error");
-        }
-        else if (problem.Status >= StatusCodes.Status400BadRequest)
-        {
-            _logger.LogError(context.Exception, "Request error");
+            case >= StatusCodes.Status500InternalServerError:
+                _logger.LogError(context.Exception, "Server error");
+                break;
+            case >= StatusCodes.Status400BadRequest:
+                _logger.LogError(context.Exception, "Request error");
+                break;
         }
         
         var response = BuildResponse(problem);
@@ -50,13 +50,13 @@ public class CustomExceptionFilter : IExceptionFilter
     }
     
     private static ObjectResult BuildResponse(ProblemDetails problem) =>
-            new ObjectResult(problem)
+        new(problem)
+        {
+            StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError,
+            ContentTypes = new MediaTypeCollection
             {
-                StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError,
-                ContentTypes = new MediaTypeCollection
-                {
-                    "application/problem+json"
-                }
-            };
+                "application/problem+json"
+            }
+        };
 }
     
