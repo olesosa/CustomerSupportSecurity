@@ -56,7 +56,7 @@ namespace CS.Security.Services.Authentication
         public string GenerateRefreshToken(User user)
         {
             var randomNumber = new byte[RefreshTokenSize];
-            using (var rng = RandomNumberGenerator.Create())
+            using (var rng = RandomNumberGenerator.Create())//using declaration
             {
                 rng.GetBytes(randomNumber);
                 return Convert.ToBase64String(randomNumber);

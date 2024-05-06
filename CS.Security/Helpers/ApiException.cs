@@ -1,6 +1,6 @@
 namespace CS.Security.Helpers;
 
-public class ApiException : Exception
+public class ApiException : Exception//not used
 {
     public int Status { get; set; }
     public string Detail { get; set; }

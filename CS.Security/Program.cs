@@ -68,7 +68,7 @@ namespace CS.Security
             builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
             builder.Services.AddValidatorsFromAssemblyContaining<AdminCreateDtoValidator>();
-            builder.Services.AddValidatorsFromAssemblyContaining<UserLogInValidator>();
+            builder.Services.AddValidatorsFromAssemblyContaining<UserLogInValidator>();//3 redundant calls on lines 71-73
             builder.Services.AddValidatorsFromAssemblyContaining<UserSignUpValidator>();
             builder.Services.AddValidatorsFromAssemblyContaining<TokenDtoValidator>();
 
@@ -91,7 +91,7 @@ namespace CS.Security
                 config.ReadFrom.Configuration(context.Configuration));
 
             var authConfig = new AuthSettings();
-            builder.Configuration.GetSection("Auth").Bind(authConfig);
+            builder.Configuration.GetSection("Auth").Bind(authConfig);//better use Get<AuthSettings> instead of these 2 lines 93-94
             builder.Services.AddSingleton(authConfig);
 
             builder.Services.AddAuthentication(options =>
@@ -153,7 +153,7 @@ namespace CS.Security
         {
             using var scope = app.Services.CreateScope();
             var seedService = scope.ServiceProvider.GetRequiredService<DataSeeder>();
-            if (seedService == null) return;
+            if (seedService == null) return;//don't use shortened if statements. better use { } and new lines
             await seedService.SeedRoles();
             await seedService.SeedAllData();
         }

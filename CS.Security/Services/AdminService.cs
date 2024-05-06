@@ -10,7 +10,7 @@ namespace CS.Security.Services;
 
 public class AdminService : IAdminService
 {
-    private readonly ApplicationContext _context;
+    private readonly ApplicationContext _context;//not used
     private readonly UserManager<User> _userManager;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
     private readonly IMapper _mapper;

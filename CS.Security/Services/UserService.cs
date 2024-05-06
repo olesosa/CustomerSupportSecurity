@@ -132,7 +132,7 @@ namespace CS.Security.Services
                 throw new AuthException(404, "User not found");
             }
             
-            var result = _userManager.DeleteAsync(user).IsCompletedSuccessfully;
+            var result = _userManager.DeleteAsync(user).IsCompletedSuccessfully;//critical. must be awaited. you check only task state
 
             if (!result)
             {
